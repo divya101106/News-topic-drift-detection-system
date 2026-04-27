@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# ML Models & Data (regenerate with: python backend/models/generate_mock_models.py)
+backend/models/*.pkl
+backend/models/*.npy
+
+# Database
+*.db
+
+# NLTK data (downloaded at runtime)
+backend/nltk_data/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

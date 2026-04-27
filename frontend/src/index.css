@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-alert: #EF4444;
+  --color-brand-warning: #F59E0B;
+  
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+  
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  
+  --font-sans: "Inter", -apple-system, sans-serif;
+  --font-mono: "Roboto Mono", monospace;
+}
+
+@layer base {
+  :root {
+    --bg-base: #F8F9FA; 
+    --bg-surface: #FFFFFF;
+    --bg-surface-hover: #F1F3F5;
+    
+    --text-main: #212529; 
+    --text-muted: #868E96;
+    --text-inverse: #F8F9FA;
+    
+    --border-subtle: #E9ECEF;
+    --border-strong: #DEE2E6;
+    
+    --brand-primary: #059669; 
+    --brand-secondary: #10B981; 
+  }
+
+  .dark {
+    --bg-base: #09090B; 
+    --bg-surface: #18181B; 
+    --bg-surface-hover: #27272A;
+    
+    --text-main: #F4F4F5; 
+    --text-muted: #A1A1AA; 
+    --text-inverse: #09090B;
+    
+    --border-subtle: #27272A;
+    --border-strong: #3F3F46;
+    
+    --brand-primary: #10B981; 
+    --brand-secondary: #34D399; 
+  }
+
+  body {
+    @apply bg-bg-base text-text-main antialiased selection:bg-brand-primary/30 selection:text-brand-primary transition-colors duration-300;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-bg-surface backdrop-blur-md border border-border-subtle rounded-2xl shadow-sm transition-all duration-300;
+  }
+  
+  .glass-panel {
+    @apply bg-bg-surface/95 backdrop-blur-lg border-b border-border-subtle shadow-sm transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-brand-primary hover:bg-brand-secondary text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-300 shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.23)] active:scale-95 flex items-center justify-center gap-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-bg-surface hover:bg-bg-surface-hover text-text-main border border-border-strong font-medium py-2 px-4 rounded-xl transition-all duration-300 active:scale-95;
+  }
+  
+  .input-field {
+    @apply bg-bg-base border border-border-strong focus:border-brand-primary focus:ring-1 focus:ring-brand-primary rounded-xl px-4 py-2 text-text-main outline-none transition-all duration-200 placeholder:text-text-muted;
+  }
+}
