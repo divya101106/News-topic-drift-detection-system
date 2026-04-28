@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, History, UploadCloud, Settings, Activity } from 'lucide-react';
+import { LayoutDashboard, History, UploadCloud, Settings, Activity, ArrowRightLeft } from 'lucide-react';
 import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'History Logs', path: '/history', icon: History },
   { name: 'Scan New Batch', path: '/scan', icon: UploadCloud },
+  { name: 'Compare Batches', path: '/compare', icon: ArrowRightLeft },
+  { name: 'History Logs', path: '/history', icon: History },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 

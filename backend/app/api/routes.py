@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import DriftLog
-from app.db.schemas import UploadResponse, DashboardStats, DriftLogResponse
+from app.db.schemas import UploadResponse, DashboardStats, DriftLogResponse, CompareResponse
 from app.services.preprocessing import clean_text
 from app.services.vectorization import vectorization_service
 from app.services.drift import detect_drift
@@ -54,7 +54,12 @@ async def upload_batch(file: UploadFile = File(...), db: Session = Depends(get_d
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during vectorization: {str(e)}")
         
-    is_drifted, similarity, batch_centroid = detect_drift(tfidf_matrix, pca_vectors, settings.SIMILARITY_THRESHOLD)
+    is_drifted, similarity, batch_centroid, topic_drift = detect_drift(
+        tfidf_matrix, 
+        pca_vectors, 
+        vectorization_service.vectorizer, 
+        settings.SIMILARITY_THRESHOLD
+    )
     
     # Take a sample of PCA points for frontend visualization (to avoid huge payloads)
     sample_size = min(200, len(pca_vectors))
@@ -78,7 +83,57 @@ async def upload_batch(file: UploadFile = File(...), db: Session = Depends(get_d
         batch_size=len(texts),
         top_terms=top_terms,
         timestamp=db_log.timestamp,
-        pca_points=pca_points
+        pca_points=pca_points,
+        topic_drift=topic_drift
+    )
+
+async def parse_uploaded_file(file: UploadFile) -> List[str]:
+    try:
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file.file)
+            text_col = next((col for col in df.columns if col.lower() in ['text', 'content', 'article']), None)
+            if not text_col:
+                text_col = df.select_dtypes(include=['object']).columns[0]
+            return df[text_col].dropna().astype(str).tolist()
+        else: # JSON
+            content = await file.read()
+            data = json.loads(content)
+            if isinstance(data, list) and len(data) > 0:
+                if isinstance(data[0], dict):
+                    return [item.get('text', item.get('content', '')) for item in data]
+                elif isinstance(data[0], str):
+                    return data
+            raise ValueError("Invalid format")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error parsing {file.filename}: {str(e)}")
+
+@router.post("/compare-batches", response_model=CompareResponse)
+async def compare_batches(
+    file_a: UploadFile = File(...), 
+    file_b: UploadFile = File(...)
+):
+    from app.services.drift import compare_two_matrices
+    
+    texts_a = await parse_uploaded_file(file_a)
+    texts_b = await parse_uploaded_file(file_b)
+    
+    cleaned_a = [clean_text(t) for t in texts_a]
+    cleaned_b = [clean_text(t) for t in texts_b]
+    
+    tfidf_a, _, terms_a = vectorization_service.transform(cleaned_a)
+    tfidf_b, _, terms_b = vectorization_service.transform(cleaned_b)
+    
+    similarity = compare_two_matrices(tfidf_a, tfidf_b)
+    
+    common = list(set(terms_a) & set(terms_b))
+    
+    return CompareResponse(
+        similarity_score=similarity,
+        batch_a_size=len(texts_a),
+        batch_b_size=len(texts_b),
+        batch_a_top_terms=terms_a,
+        batch_b_top_terms=terms_b,
+        common_terms=common
     )
 
 @router.get("/history", response_model=List[DriftLogResponse])

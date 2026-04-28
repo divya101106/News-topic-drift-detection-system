@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import ScanBatch from './pages/ScanBatch';
 import Settings from './pages/Settings';
+import CompareBatches from './pages/CompareBatches';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="history" element={<History />} />
           <Route path="scan" element={<ScanBatch />} />
+          <Route path="compare" element={<CompareBatches />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

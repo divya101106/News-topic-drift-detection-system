@@ -28,6 +28,19 @@ export const uploadBatch = async (file: File) => {
   return response.data;
 };
 
+export const compareBatches = async (fileA: File, fileB: File) => {
+  const formData = new FormData();
+  formData.append('file_a', fileA);
+  formData.append('file_b', fileB);
+  
+  const response = await api.post('/compare-batches', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const checkHealth = async () => {
   const response = await api.get('/health');
   return response.data;

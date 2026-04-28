@@ -18,6 +18,12 @@ class DriftLogResponse(DriftLogBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class TopicDriftDetail(BaseModel):
+    term: str
+    baseline_score: float
+    batch_score: float
+    diff: float
+
 class UploadResponse(BaseModel):
     similarity_score: float
     drift_detected: bool
@@ -25,6 +31,15 @@ class UploadResponse(BaseModel):
     top_terms: List[str]
     timestamp: datetime
     pca_points: List[List[float]]
+    topic_drift: Optional[List[TopicDriftDetail]] = None
+
+class CompareResponse(BaseModel):
+    similarity_score: float
+    batch_a_size: int
+    batch_b_size: int
+    batch_a_top_terms: List[str]
+    batch_b_top_terms: List[str]
+    common_terms: List[str]
 
 class DashboardStats(BaseModel):
     latest_similarity: float

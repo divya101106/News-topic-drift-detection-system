@@ -38,7 +38,8 @@ def clean_text(text: str) -> str:
     tokens = text.split()
     # remove stopwords and lemmatize
     cleaned_tokens = [
-        lemmatizer.lemmatize(word) for word in tokens if word not in stop_words
+        lemmatizer.lemmatize(word) for word in tokens 
+        if word not in stop_words and len(word) > 2
     ]
     
     return " ".join(cleaned_tokens)

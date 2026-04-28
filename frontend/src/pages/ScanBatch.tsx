@@ -4,6 +4,7 @@ import { uploadBatch } from '../services/api';
 import PCAScatterChart from '../components/PCAScatterChart';
 import SimilarityGauge from '../components/SimilarityGauge';
 import TopTermsChips from '../components/TopTermsChips';
+import TopicDriftChart from '../components/TopicDriftChart';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ScanBatch() {
@@ -209,6 +210,16 @@ export default function ScanBatch() {
                 />
               </div>
             </div>
+
+            {result.topic_drift && result.topic_drift.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <TopicDriftChart data={result.topic_drift} />
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
