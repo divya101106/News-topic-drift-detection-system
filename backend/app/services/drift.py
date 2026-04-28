@@ -122,20 +122,55 @@ def compare_two_matrices(
     return float(np.clip(scaled, 0.0, 1.0))
 
 
+CATEGORY_CENTROIDS_PATH = os.path.join(MODEL_DIR, 'category_centroids.joblib')
+CATEGORY_CENTROIDS = None
+
+def get_category_centroids():
+    global CATEGORY_CENTROIDS
+    if CATEGORY_CENTROIDS is None:
+        import joblib
+        if os.path.exists(CATEGORY_CENTROIDS_PATH):
+            CATEGORY_CENTROIDS = joblib.load(CATEGORY_CENTROIDS_PATH)
+    return CATEGORY_CENTROIDS
+
+def get_category_drift(batch_centroid: np.ndarray) -> list:
+    """
+    Compares the batch against multiple reference categories to see 
+    where it 'belongs' now.
+    """
+    centroids = get_category_centroids()
+    if not centroids:
+        return []
+    
+    results = []
+    for cat_name, cat_centroid in centroids.items():
+        sim = float(cosine_similarity(cat_centroid, batch_centroid)[0][0])
+        # Same scaling: [0.15, 0.75] -> [0, 1]
+        scaled = float(np.clip((sim - 0.15) / 0.60, 0.0, 1.0))
+        results.append({
+            "category": cat_name,
+            "match_score": scaled
+        })
+    
+    # Sort by match score
+    return sorted(results, key=lambda x: x["match_score"], reverse=True)
+
+
 def detect_drift(
     tfidf_matrix,
     pca_vectors: np.ndarray,
-    vectorizer, # Added vectorizer to get topic breakdown
+    vectorizer,
     threshold: float = 0.75
-) -> Tuple[bool, float, np.ndarray, list]:
+) -> Tuple[bool, float, np.ndarray, list, list]:
     """
     Detect topic drift by comparing batch TF-IDF centroid against baseline.
+    Returns (is_drifted, similarity, pca_centroid, topic_drift, category_drift)
     """
     n_docs = tfidf_matrix.shape[0]
     pca_dim = pca_vectors.shape[1] if len(pca_vectors.shape) > 1 else 2
 
     if n_docs == 0:
-        return False, 1.0, np.zeros((1, pca_dim)), []
+        return False, 1.0, np.zeros((1, pca_dim)), [], []
 
     # 1. Compute batch centroid in TF-IDF space
     batch_centroid = calculate_tfidf_centroid(tfidf_matrix)
@@ -151,10 +186,10 @@ def detect_drift(
     batch_norm = np.linalg.norm(batch_centroid)
 
     if baseline_norm == 0:
-        return False, 0.5, batch_pca_centroid, []
+        return False, 0.5, batch_pca_centroid, [], []
 
     if batch_norm == 0:
-        return True, 0.0, batch_pca_centroid, []
+        return True, 0.0, batch_pca_centroid, [], []
 
     # 5. Compute cosine similarity
     raw_similarity = float(cosine_similarity(baseline, batch_centroid)[0][0])
@@ -167,7 +202,10 @@ def detect_drift(
 
     # 7. Get topic drift breakdown
     topic_drift = get_topic_drift_breakdown(vectorizer, baseline, batch_centroid)
+    
+    # 8. Get category-level drift
+    category_drift = get_category_drift(batch_centroid)
 
     is_drifted = final_similarity < threshold
 
-    return is_drifted, final_similarity, batch_pca_centroid, topic_drift
+    return is_drifted, final_similarity, batch_pca_centroid, topic_drift, category_drift

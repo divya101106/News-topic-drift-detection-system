@@ -1,16 +1,20 @@
 import { useState, useCallback } from 'react';
-import { UploadCloud, FileJson, FileText, CheckCircle, AlertTriangle, Loader2, Activity } from 'lucide-react';
-import { uploadBatch } from '../services/api';
+import { UploadCloud, FileJson, FileText, CheckCircle, AlertTriangle, Loader2, Activity, ListFilter } from 'lucide-react';
+import { uploadBatch, extractArticles, analyzeTexts } from '../services/api';
 import PCAScatterChart from '../components/PCAScatterChart';
 import SimilarityGauge from '../components/SimilarityGauge';
 import TopTermsChips from '../components/TopTermsChips';
 import TopicDriftChart from '../components/TopicDriftChart';
+import CategoryDriftChart from '../components/CategoryDriftChart';
+import ArticleSelector from '../components/ArticleSelector';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ScanBatch() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [previewArticles, setPreviewArticles] = useState<string[] | null>(null);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,18 +50,45 @@ export default function ScanBatch() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleFilePreview = async () => {
+    if (!file) return;
+    try {
+      setIsExtracting(true);
+      setError(null);
+      const articles = await extractArticles(file);
+      setPreviewArticles(articles);
+    } catch (err: any) {
+      setError('Failed to extract articles. Check file format.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleAnalyzeSelected = async (selectedTexts: string[]) => {
+    try {
+      setIsUploading(true);
+      setError(null);
+      const data = await analyzeTexts(selectedTexts);
+      setResult(data);
+      setPreviewArticles(null);
+    } catch (err: any) {
+      setError('Analysis failed. Try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleQuickUpload = async () => {
     if (!file) return;
     
     try {
       setIsUploading(true);
       setError(null);
-      
       const data = await uploadBatch(file);
       setResult(data);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || 'Failed to process batch. Ensure backend is running.');
+      setError(err.response?.data?.detail || 'Failed to process batch.');
     } finally {
       setIsUploading(false);
     }
@@ -67,17 +98,25 @@ export default function ScanBatch() {
     setFile(null);
     setResult(null);
     setError(null);
+    setPreviewArticles(null);
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-main tracking-tight">Scan New Batch</h1>
-        <p className="text-text-muted mt-1">Upload a CSV or JSON file containing news articles to detect topic drift</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-text-main tracking-tight">Scan New Batch</h1>
+          <p className="text-text-muted mt-1">Upload and analyze articles to detect topic drift</p>
+        </div>
+        {result && (
+          <button onClick={resetForm} className="btn-secondary text-sm">
+            New Scan
+          </button>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
-        {!result ? (
+        {(!result && !previewArticles) ? (
           <motion.div 
             key="upload"
             initial={{ opacity: 0, y: 20 }}
@@ -100,7 +139,7 @@ export default function ScanBatch() {
                 Drag and drop your file here
               </h3>
               <p className="text-sm text-text-muted mb-6">
-                Supports .csv or .json files containing text data
+                Supports .csv or .json files containing news articles
               </p>
               
               <div className="flex gap-4">
@@ -134,23 +173,24 @@ export default function ScanBatch() {
                   </div>
                 </div>
                 
-                <button 
-                  onClick={handleUpload}
-                  disabled={isUploading}
-                  className="btn-primary flex items-center gap-2"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Activity className="w-4 h-4" />
-                      Run Analysis
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleFilePreview}
+                    disabled={isExtracting || isUploading}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListFilter className="w-4 h-4" />}
+                    Preview & Select
+                  </button>
+                  <button 
+                    onClick={handleQuickUpload}
+                    disabled={isUploading || isExtracting}
+                    className="btn-primary flex items-center gap-2"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+                    Analyze All
+                  </button>
+                </div>
               </div>
             )}
             
@@ -161,24 +201,30 @@ export default function ScanBatch() {
               </div>
             )}
           </motion.div>
+        ) : previewArticles ? (
+          <motion.div
+            key="preview"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+          >
+            <ArticleSelector 
+              articles={previewArticles} 
+              onAnalyze={handleAnalyzeSelected} 
+              onCancel={() => setPreviewArticles(null)}
+            />
+          </motion.div>
         ) : (
           <motion.div 
             key="results"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="space-y-6"
+            className="space-y-6 pb-12"
           >
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-text-main">Analysis Results</h2>
-              <button onClick={resetForm} className="btn-secondary text-sm">
-                Scan Another Batch
-              </button>
-            </div>
-            
             <div className={`p-4 rounded-xl border flex items-start gap-4 ${
               result.drift_detected 
-                ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
-                : 'bg-brand-primary/10 border-brand-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                : 'bg-brand-primary/10 border-brand-primary/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
             }`}>
               {result.drift_detected ? (
                 <AlertTriangle className="w-8 h-8 text-red-400 flex-shrink-0" />
@@ -191,9 +237,7 @@ export default function ScanBatch() {
                 </h3>
                 <p className="text-sm text-text-main mt-1">
                   Processed {result.batch_size} articles. 
-                  {result.drift_detected 
-                    ? ` The similarity score of ${result.similarity_score.toFixed(3)} is below the acceptable threshold.` 
-                    : ` The similarity score of ${result.similarity_score.toFixed(3)} indicates alignment with the baseline.`}
+                  Similarity: <span className="font-mono font-bold">{(result.similarity_score * 100).toFixed(1)}%</span>
                 </p>
               </div>
             </div>
@@ -203,11 +247,12 @@ export default function ScanBatch() {
                 <SimilarityGauge score={result.similarity_score} />
                 <TopTermsChips terms={result.top_terms} />
               </div>
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 space-y-6">
                 <PCAScatterChart 
                   pcaPoints={result.pca_points || []} 
                   isDrifted={result.drift_detected} 
                 />
+                <CategoryDriftChart data={result.category_drift || []} />
               </div>
             </div>
 

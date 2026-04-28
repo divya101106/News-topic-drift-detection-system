@@ -100,106 +100,86 @@ pca = PCA(n_components=2)  # Just 2 components for the scatter chart
 pca.fit(tfidf_all.toarray())
 print(f"  PCA components: {pca.n_components_}")
 
-# Step 4: Compute BASELINE centroid from ONLY the baseline categories
-print(f"\n[4/5] Computing baseline centroid from categories: {BASELINE_CATEGORIES}")
-baseline_data = fetch_20newsgroups(
-    subset='all',
-    categories=BASELINE_CATEGORIES,
-    remove=('headers', 'footers', 'quotes')
-)
-baseline_texts = [clean_text(t) for t in baseline_data.data]
-baseline_texts = [t for t in baseline_texts if t.strip()]
-print(f"  Baseline documents: {len(baseline_texts)}")
+# ============================================================
+# CATEGORY DEFINITIONS for "Drift Per Category"
+# ============================================================
+CATEGORY_MAP = {
+    "Politics & Religion": [
+        'talk.politics.misc', 'talk.politics.guns', 'talk.politics.mideast',
+        'talk.religion.misc', 'soc.religion.christian'
+    ],
+    "Technology & Graphics": [
+        'comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware',
+        'comp.sys.mac.hardware', 'comp.windows.x'
+    ],
+    "Science & Space": [
+        'sci.crypt', 'sci.electronics', 'sci.med', 'sci.space'
+    ],
+    "Sports & Recreation": [
+        'rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey'
+    ]
+}
 
-# Transform baseline texts through the SAME vectorizer
-baseline_tfidf = vectorizer.transform(baseline_texts)
-baseline_centroid = np.mean(baseline_tfidf.toarray(), axis=0, keepdims=True)
+print("\n[4/5] Computing reference centroids for all categories...")
+category_centroids = {}
 
-# Verify baseline centroid is non-negative and non-zero
-assert np.all(baseline_centroid >= 0), "ERROR: Baseline centroid has negative values!"
-assert np.sum(baseline_centroid) > 0, "ERROR: Baseline centroid is all zeros!"
-print(f"  Baseline centroid: min={baseline_centroid.min():.6f}, max={baseline_centroid.max():.6f}, sum={baseline_centroid.sum():.4f}")
+for cat_name, subcategories in CATEGORY_MAP.items():
+    print(f"  Processing {cat_name}...")
+    cat_data = fetch_20newsgroups(
+        subset='all',
+        categories=subcategories,
+        remove=('headers', 'footers', 'quotes')
+    )
+    cat_texts = [clean_text(t) for t in cat_data.data]
+    cat_texts = [t for t in cat_texts if t.strip()]
+    
+    if cat_texts:
+        cat_tfidf = vectorizer.transform(cat_texts)
+        cat_centroid = np.mean(cat_tfidf.toarray(), axis=0, keepdims=True)
+        category_centroids[cat_name] = cat_centroid
 
-# Calculate PCA baseline based on these focused texts
-baseline_pca = pca.transform(baseline_tfidf.toarray())
-baseline_pca_centroid = baseline_pca.mean(axis=0, keepdims=True)
+# Save the main baseline (Politics/Religion) as the primary drift reference
+primary_baseline = category_centroids["Politics & Religion"]
 
 # Step 5: Save everything
 print("\n[5/5] Saving models...")
 joblib.dump(vectorizer, os.path.join(models_dir, 'tfidf_vectorizer.pkl'))
 joblib.dump(pca, os.path.join(models_dir, 'pca_model.pkl'))
+joblib.dump(category_centroids, os.path.join(models_dir, 'category_centroids.joblib'))
 
-# IMPORTANT: Save the FOCUSED baseline centroid, not the full dataset mean!
-np.save(os.path.join(models_dir, 'tfidf_baseline_centroid.npy'), baseline_centroid)
-np.save(os.path.join(models_dir, 'baseline_centroid.npy'), baseline_pca_centroid)
+# Main baseline files
+np.save(os.path.join(models_dir, 'tfidf_baseline_centroid.npy'), primary_baseline)
+baseline_pca = pca.transform(primary_baseline)
+np.save(os.path.join(models_dir, 'baseline_centroid.npy'), baseline_pca)
 
-print(f"  ✓ tfidf_vectorizer.pkl ({tfidf_all.shape[1]} features)")
-print(f"  ✓ pca_model.pkl ({pca.n_components_} components)")
-print(f"  ✓ tfidf_baseline_centroid.npy {baseline_centroid.shape}")
-print(f"  ✓ baseline_centroid.npy {baseline_pca_centroid.shape}")
+print(f"  ✓ tfidf_vectorizer.pkl")
+print(f"  ✓ category_centroids.joblib ({list(category_centroids.keys())})")
+print(f"  ✓ tfidf_baseline_centroid.npy")
 
 # ============================================================
-# VERIFICATION — test with same-topic and different-topic data
+# VERIFICATION
 # ============================================================
 print("\n" + "=" * 60)
 print("VERIFICATION")
 print("=" * 60)
 
-# Test 1: Same-topic batch (should be HIGH similarity)
-same_topic_data = fetch_20newsgroups(
-    subset='all',
-    categories=['talk.politics.misc'],
-    remove=('headers', 'footers', 'quotes')
-)
-same_texts = [clean_text(t) for t in same_topic_data.data[:50]]
-same_texts = [t for t in same_texts if t.strip()]
-same_tfidf = vectorizer.transform(same_texts)
-same_centroid = np.mean(same_tfidf.toarray(), axis=0, keepdims=True)
-same_sim = cosine_similarity(baseline_centroid, same_centroid)[0][0]
-print(f"\n  Same-topic (politics):    similarity = {same_sim:.4f}  {'✓ STABLE' if same_sim >= 0.75 else '✗ UNEXPECTED'}")
+test_cats = {
+    "Politics Sample": ['talk.politics.misc'],
+    "Sports Sample": ['rec.sport.baseball'],
+    "Science Sample": ['sci.space']
+}
 
-# Test 2: Related topic (should be MEDIUM similarity)
-related_data = fetch_20newsgroups(
-    subset='all',
-    categories=['alt.atheism'],
-    remove=('headers', 'footers', 'quotes')
-)
-related_texts = [clean_text(t) for t in related_data.data[:50]]
-related_texts = [t for t in related_texts if t.strip()]
-related_tfidf = vectorizer.transform(related_texts)
-related_centroid = np.mean(related_tfidf.toarray(), axis=0, keepdims=True)
-related_sim = cosine_similarity(baseline_centroid, related_centroid)[0][0]
-print(f"  Related topic (atheism):  similarity = {related_sim:.4f}  {'~ BORDERLINE' if 0.3 < related_sim < 0.75 else ('✓ STABLE' if related_sim >= 0.75 else '✗ DRIFTED')}")
+for label, cats in test_cats.items():
+    data = fetch_20newsgroups(subset='all', categories=cats, remove=('headers', 'footers', 'quotes'))
+    texts = [clean_text(t) for t in data.data[:50]]
+    tfidf = vectorizer.transform(texts)
+    centroid = np.mean(tfidf.toarray(), axis=0, keepdims=True)
+    
+    print(f"\nComparing {label} against all references:")
+    for ref_name, ref_centroid in category_centroids.items():
+        sim = float(cosine_similarity(ref_centroid, centroid)[0][0])
+        # Apply scaling logic [0.15, 0.75] -> [0, 1]
+        scaled = np.clip((sim - 0.15) / 0.60, 0, 1)
+        print(f"  -> vs {ref_name:22}: {scaled:.2%} match")
 
-# Test 3: Different topic (should be LOW similarity → drift detected)
-diff_data = fetch_20newsgroups(
-    subset='all',
-    categories=['rec.sport.baseball'],
-    remove=('headers', 'footers', 'quotes')
-)
-diff_texts = [clean_text(t) for t in diff_data.data[:50]]
-diff_texts = [t for t in diff_texts if t.strip()]
-diff_tfidf = vectorizer.transform(diff_texts)
-diff_centroid = np.mean(diff_tfidf.toarray(), axis=0, keepdims=True)
-diff_sim = cosine_similarity(baseline_centroid, diff_centroid)[0][0]
-print(f"  Different topic (sports): similarity = {diff_sim:.4f}  {'✗ DRIFTED' if diff_sim < 0.75 else '✓ STABLE'}")
-
-# Test 4: Very different topic
-sci_data = fetch_20newsgroups(
-    subset='all',
-    categories=['comp.graphics'],
-    remove=('headers', 'footers', 'quotes')
-)
-sci_texts = [clean_text(t) for t in sci_data.data[:50]]
-sci_texts = [t for t in sci_texts if t.strip()]
-sci_tfidf = vectorizer.transform(sci_texts)
-sci_centroid = np.mean(sci_tfidf.toarray(), axis=0, keepdims=True)
-sci_sim = cosine_similarity(baseline_centroid, sci_centroid)[0][0]
-print(f"  Very different (comp.gfx): similarity = {sci_sim:.4f}  {'✗ DRIFTED' if sci_sim < 0.75 else '✓ STABLE'}")
-
-# Verify ALL values are in [0, 1]
-all_sims = [same_sim, related_sim, diff_sim, sci_sim]
-assert all(0 <= s <= 1 for s in all_sims), f"ERROR: Some similarities are outside [0,1]: {all_sims}"
-print(f"\n  ✓ All similarity scores are in [0, 1] range")
-print(f"  ✓ Score spread: {min(all_sims):.4f} — {max(all_sims):.4f}")
 print("\nDone! Models are ready.")

@@ -12,11 +12,17 @@ class DriftLogCreate(DriftLogBase):
     pass
 
 class DriftLogResponse(DriftLogBase):
-    id: str
+    id: int
     timestamp: datetime
-    created_at: datetime
+    pca_points: Optional[List[List[float]]] = None
+    topic_drift: Optional[List[TopicDriftDetail]] = None
+    category_drift: Optional[List[CategoryDrift]] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class CategoryDrift(BaseModel):
+    category: str
+    match_score: float
 
 class TopicDriftDetail(BaseModel):
     term: str
@@ -32,6 +38,7 @@ class UploadResponse(BaseModel):
     timestamp: datetime
     pca_points: List[List[float]]
     topic_drift: Optional[List[TopicDriftDetail]] = None
+    category_drift: Optional[List[CategoryDrift]] = None
 
 class CompareResponse(BaseModel):
     similarity_score: float

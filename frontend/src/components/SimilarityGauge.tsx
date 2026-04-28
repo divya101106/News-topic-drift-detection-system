@@ -31,7 +31,7 @@ export default function SimilarityGauge({ score, threshold = 0.75 }: SimilarityG
     <div className="glass-card p-6 flex flex-col items-center justify-center relative">
       <h3 className="text-sm font-medium text-text-muted tracking-wide uppercase self-start w-full text-left mb-2">Similarity Score</h3>
       
-      <div className="relative w-48 h-48 mt-4">
+      <div className="relative w-48 h-48 mt-4 min-h-[192px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

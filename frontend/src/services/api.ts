@@ -41,6 +41,23 @@ export const compareBatches = async (fileA: File, fileB: File) => {
   return response.data;
 };
 
+export const extractArticles = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/extract-articles', formData);
+  return response.data.articles;
+};
+
+export const analyzeTexts = async (texts: string[]) => {
+  const response = await api.post('/analyze-texts', { texts });
+  return response.data;
+};
+
+export const compareTexts = async (texts_a: string[], texts_b: string[]) => {
+  const response = await api.post('/compare-texts', { texts_a, texts_b });
+  return response.data;
+};
+
 export const checkHealth = async () => {
   const response = await api.get('/health');
   return response.data;

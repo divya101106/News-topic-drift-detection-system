@@ -16,9 +16,11 @@ interface HistoryLog {
 interface HistoryTableProps {
   logs: HistoryLog[];
   isLoading?: boolean;
+  onSelectLog?: (log: HistoryLog) => void;
+  selectedLogId?: number | null;
 }
 
-export default function HistoryTable({ logs, isLoading = false }: HistoryTableProps) {
+export default function HistoryTable({ logs, isLoading = false, onSelectLog, selectedLogId }: HistoryTableProps) {
   const [filter, setFilter] = useState<'all' | 'drifted' | 'stable'>('all');
   const [search, setSearch] = useState('');
   
@@ -105,13 +107,17 @@ export default function HistoryTable({ logs, isLoading = false }: HistoryTablePr
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   key={log.id} 
-                  className="hover:bg-bg-surface-hover/30 transition-colors group"
+                  onClick={() => onSelectLog?.(log)}
+                  className={clsx(
+                    "hover:bg-bg-surface-hover/30 transition-colors group cursor-pointer border-l-2",
+                    selectedLogId === Number(log.id) ? "bg-brand-primary/10 border-brand-primary" : "border-transparent"
+                  )}
                 >
                   <td className="p-4 whitespace-nowrap text-text-main">
                     {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm')}
                   </td>
                   <td className="p-4 whitespace-nowrap text-text-muted font-mono text-xs">
-                    {log.id.substring(0, 8)}
+                    {String(log.id).substring(0, 8)}
                   </td>
                   <td className="p-4 text-center text-text-main">
                     {log.batch_size}

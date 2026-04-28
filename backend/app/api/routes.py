@@ -9,6 +9,7 @@ from app.services.drift import detect_drift
 from app.core.config import settings
 import pandas as pd
 import json
+from datetime import datetime
 from typing import List
 
 router = APIRouter()
@@ -54,7 +55,7 @@ async def upload_batch(file: UploadFile = File(...), db: Session = Depends(get_d
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during vectorization: {str(e)}")
         
-    is_drifted, similarity, batch_centroid, topic_drift = detect_drift(
+    is_drifted, similarity, batch_centroid, topic_drift, category_drift = detect_drift(
         tfidf_matrix, 
         pca_vectors, 
         vectorization_service.vectorizer, 
@@ -65,13 +66,16 @@ async def upload_batch(file: UploadFile = File(...), db: Session = Depends(get_d
     sample_size = min(200, len(pca_vectors))
     sample_indices = pd.Series(range(len(pca_vectors))).sample(sample_size).values
     pca_points = pca_vectors[sample_indices, :2].tolist() # only send first 2 components for 2D plot
-    
-    # Create DB log
+
+    # Create DB log with ALL details
     db_log = DriftLog(
         batch_size=len(texts),
         similarity_score=similarity,
         is_drifted=is_drifted,
-        top_terms=top_terms
+        top_terms=top_terms,
+        pca_points=pca_points,
+        topic_drift=topic_drift,
+        category_drift=category_drift
     )
     db.add(db_log)
     db.commit()
@@ -84,7 +88,8 @@ async def upload_batch(file: UploadFile = File(...), db: Session = Depends(get_d
         top_terms=top_terms,
         timestamp=db_log.timestamp,
         pca_points=pca_points,
-        topic_drift=topic_drift
+        topic_drift=topic_drift,
+        category_drift=category_drift
     )
 
 async def parse_uploaded_file(file: UploadFile) -> List[str]:
@@ -136,10 +141,89 @@ async def compare_batches(
         common_terms=common
     )
 
+@router.post("/compare-texts", response_model=CompareResponse)
+async def compare_texts(payload: dict):
+    from app.services.drift import compare_two_matrices
+    
+    texts_a = payload.get("texts_a", [])
+    texts_b = payload.get("texts_b", [])
+    
+    if not texts_a or not texts_b:
+        raise HTTPException(status_code=400, detail="Missing texts for comparison")
+    
+    cleaned_a = [clean_text(t) for t in texts_a]
+    cleaned_b = [clean_text(t) for t in texts_b]
+    
+    tfidf_a, _, terms_a = vectorization_service.transform(cleaned_a)
+    tfidf_b, _, terms_b = vectorization_service.transform(cleaned_b)
+    
+    similarity = compare_two_matrices(tfidf_a, tfidf_b)
+    common = list(set(terms_a) & set(terms_b))
+    
+    return CompareResponse(
+        similarity_score=similarity,
+        batch_a_size=len(texts_a),
+        batch_b_size=len(texts_b),
+        batch_a_top_terms=terms_a,
+        batch_b_top_terms=terms_b,
+        common_terms=common
+    )
+
 @router.get("/history", response_model=List[DriftLogResponse])
 def get_history(db: Session = Depends(get_db), limit: int = 100):
     logs = db.query(DriftLog).order_by(DriftLog.timestamp.desc()).limit(limit).all()
     return logs
+
+@router.post("/analyze-texts", response_model=UploadResponse)
+async def analyze_texts(payload: dict, db: Session = Depends(get_db)):
+    texts = payload.get("texts", [])
+    if not texts:
+        raise HTTPException(status_code=400, detail="No texts provided")
+    
+    cleaned_texts = [clean_text(text) for text in texts]
+    tfidf_matrix, pca_vectors, top_terms = vectorization_service.transform(cleaned_texts)
+    
+    is_drifted, similarity, batch_centroid, topic_drift, category_drift = detect_drift(
+        tfidf_matrix, 
+        pca_vectors, 
+        vectorization_service.vectorizer, 
+        settings.SIMILARITY_THRESHOLD
+    )
+    
+    # Send PCA points
+    sample_size = min(200, len(pca_vectors))
+    sample_indices = pd.Series(range(len(pca_vectors))).sample(sample_size).values
+    pca_points = pca_vectors[sample_indices, :2].tolist()
+    
+    # Save to DB
+    db_log = DriftLog(
+        batch_size=len(texts),
+        similarity_score=similarity,
+        is_drifted=is_drifted,
+        top_terms=top_terms,
+        pca_points=pca_points,
+        topic_drift=topic_drift,
+        category_drift=category_drift
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_log)
+    
+    return UploadResponse(
+        similarity_score=similarity,
+        drift_detected=is_drifted,
+        batch_size=len(texts),
+        top_terms=top_terms,
+        timestamp=db_log.timestamp,
+        pca_points=pca_points,
+        topic_drift=topic_drift,
+        category_drift=category_drift
+    )
+
+@router.post("/extract-articles")
+async def extract_articles(file: UploadFile = File(...)):
+    texts = await parse_uploaded_file(file)
+    return {"articles": texts}
 
 @router.get("/dashboard-stats", response_model=DashboardStats)
 def get_dashboard_stats(db: Session = Depends(get_db)):
