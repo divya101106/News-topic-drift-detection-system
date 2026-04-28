@@ -6,8 +6,9 @@ import DriftAlertBanner from '../components/DriftAlertBanner';
 import PCAScatterChart from '../components/PCAScatterChart';
 import TopTermsChips from '../components/TopTermsChips';
 import HistoryTable from '../components/HistoryTable';
-import { getDashboardStats, getHistory } from '../services/api';
+import { getDashboardStats, getHistory, fetchNewsAndAnalyze } from '../services/api';
 import { formatDistanceToNow, format } from 'date-fns';
+import { Globe, RefreshCcw } from 'lucide-react';
 
 import TopicDriftChart from '../components/TopicDriftChart';
 import CategoryDriftChart from '../components/CategoryDriftChart';
@@ -16,26 +17,39 @@ export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetchingNews, setIsFetchingNews] = useState(false);
+  const [newsCategory, setNewsCategory] = useState('politics');
   const [selectedLog, setSelectedLog] = useState<any>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (autoSelectLatest = false) => {
     try {
-      setLoading(true);
+      if (!autoSelectLatest) setLoading(true);
       const [statsData, logsData] = await Promise.all([
         getDashboardStats(),
-        getHistory(10) // Get more for dashboard
+        getHistory(10)
       ]);
       setStats(statsData);
       setLogs(logsData);
       
-      // Auto-select latest if none selected
-      if (logsData.length > 0 && !selectedLog) {
+      if (logsData.length > 0 && (autoSelectLatest || !selectedLog)) {
         setSelectedLog(logsData[0]);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchLatestNews = async () => {
+    try {
+      setIsFetchingNews(true);
+      await fetchNewsAndAnalyze(newsCategory);
+      await fetchDashboardData(true);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || "Failed to fetch latest news. Make sure API key is set.");
+    } finally {
+      setIsFetchingNews(false);
     }
   };
 
@@ -60,7 +74,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header section */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-main tracking-tight">System Dashboard</h1>
           <p className="text-text-muted mt-1">
@@ -69,11 +83,27 @@ export default function Dashboard() {
               : 'Monitor topic shifts across incoming news batches'}
           </p>
         </div>
-        {selectedLog && (
-          <div className="text-xs text-text-muted bg-bg-surface-hover px-3 py-1 rounded-full border border-border-subtle">
-            Scan Date: {format(new Date(selectedLog.timestamp), 'MMM dd, HH:mm')}
-          </div>
-        )}
+        
+        <div className="flex items-center gap-3 bg-bg-surface-hover/50 p-2 rounded-xl border border-border-subtle w-full md:w-auto">
+          <Globe className="w-4 h-4 text-text-muted ml-2" />
+          <select 
+            value={newsCategory}
+            onChange={(e) => setNewsCategory(e.target.value)}
+            className="bg-transparent text-sm text-white border-none focus:ring-0 outline-none pr-8 cursor-pointer"
+          >
+            {['politics', 'technology', 'science', 'sports', 'business', 'health', 'entertainment', 'world'].map(cat => (
+              <option key={cat} value={cat} className="bg-[#0b0c0e]">{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+            ))}
+          </select>
+          <button 
+            onClick={handleFetchLatestNews}
+            disabled={isFetchingNews}
+            className="btn-primary py-1.5 px-4 text-xs flex items-center gap-2 whitespace-nowrap"
+          >
+            {isFetchingNews ? <RefreshCcw className="w-3 h-3 animate-spin" /> : <RefreshCcw className="w-3 h-3" />}
+            Detect Live Drift
+          </button>
+        </div>
       </div>
 
       {displayLog && (

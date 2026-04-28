@@ -96,7 +96,7 @@ export default function CompareBatches() {
                   <span className="text-brand-primary font-bold">A</span>
                 </div>
                 <h3 className="text-white font-medium mb-4">Batch A</h3>
-                <input type="file" id="file-a" className="hidden" onChange={(e) => { setFileA(e.target.files?.[0] || null); setSelectedA(null); }} />
+                <input type="file" id="file-a" className="hidden" accept=".csv,.json,.txt,.pdf" onChange={(e) => { setFileA(e.target.files?.[0] || null); setSelectedA(null); }} />
                 <label htmlFor="file-a" className={`w-full py-8 border-2 border-dashed rounded-xl flex flex-col items-center cursor-pointer transition-all ${
                   fileA ? 'border-brand-primary bg-brand-primary/5' : 'border-border-strong hover:border-slate-500'
                 }`}>
@@ -127,7 +127,7 @@ export default function CompareBatches() {
                   <span className="text-blue-400 font-bold">B</span>
                 </div>
                 <h3 className="text-white font-medium mb-4">Batch B</h3>
-                <input type="file" id="file-b" className="hidden" onChange={(e) => { setFileB(e.target.files?.[0] || null); setSelectedB(null); }} />
+                <input type="file" id="file-b" className="hidden" accept=".csv,.json,.txt,.pdf" onChange={(e) => { setFileB(e.target.files?.[0] || null); setSelectedB(null); }} />
                 <label htmlFor="file-b" className={`w-full py-8 border-2 border-dashed rounded-xl flex flex-col items-center cursor-pointer transition-all ${
                   fileB ? 'border-blue-400 bg-blue-400/5' : 'border-border-strong hover:border-slate-500'
                 }`}>

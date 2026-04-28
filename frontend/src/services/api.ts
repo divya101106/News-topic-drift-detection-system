@@ -58,6 +58,11 @@ export const compareTexts = async (texts_a: string[], texts_b: string[]) => {
   return response.data;
 };
 
+export const fetchNewsAndAnalyze = async (category: string) => {
+  const response = await api.post('/fetch-news-and-analyze', { category });
+  return response.data;
+};
+
 export const checkHealth = async () => {
   const response = await api.get('/health');
   return response.data;

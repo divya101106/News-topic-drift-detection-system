@@ -139,7 +139,7 @@ export default function ScanBatch() {
                 Drag and drop your file here
               </h3>
               <p className="text-sm text-text-muted mb-6">
-                Supports .csv or .json files containing news articles
+                Supports .csv, .json, .txt or .pdf files
               </p>
               
               <div className="flex gap-4">
@@ -147,7 +147,7 @@ export default function ScanBatch() {
                   type="file" 
                   id="file-upload" 
                   className="hidden" 
-                  accept=".csv,.json"
+                  accept=".csv,.json,.txt,.pdf"
                   onChange={handleFileChange}
                 />
                 <label 
