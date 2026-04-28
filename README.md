@@ -4,6 +4,52 @@
 
 The News Topic Drift Detection System is a monitoring tool designed to identify shifts in news themes over time. It compares incoming batches of news articles against a established baseline to determine if the current discussion topics have changed significantly. This is critical for understanding when a news source or dataset is diverging from its intended focus or when new trends are overshadowing historical patterns.
 
+## Getting Started
+
+### Prerequisites
+- Python 3.9 or higher
+- Node.js 18 or higher
+- npm or yarn
+
+### Installation and Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/divya101106/News-topic-drift-detection-system.git
+   cd News-topic-drift-detection-system
+   ```
+
+2. Backend Setup:
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # On Windows use: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. Frontend Setup:
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+
+## Running the Project
+
+### Start Backend
+From the `backend` directory:
+```bash
+source venv/bin/activate
+uvicorn app.main:app --reload
+```
+The backend will be available at `http://localhost:8000`.
+
+### Start Frontend
+From the `frontend` directory:
+```bash
+npm run dev
+```
+The frontend will be available at `http://localhost:5173`.
+
 ## Core Functionality
 
 1. Batch Scan: Analyzes a single collection of articles against the system baseline.
