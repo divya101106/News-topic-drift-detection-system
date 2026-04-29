@@ -107,3 +107,43 @@ Raw cosine similarity scores in high-dimensional text space often cluster betwee
 
 ### Topic Breakdown (Delta TF-IDF)
 To explain "why" a drift occurred, the system calculates the difference in importance for every word between the baseline and the current batch. Terms with the highest positive or negative change are displayed to the user as the primary drivers of the drift.
+
+## Deployment (Non-Docker)
+
+To deploy the project in production mode on a local server or VM:
+
+1. **Prerequisites**: Ensure you have Node.js (v18+) and Python (v3.9+) installed.
+2. **Run Deployment Script**:
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+This script will:
+- Build the React frontend into static assets.
+- Configure the FastAPI backend to serve those assets.
+- Start a production-ready Uvicorn server on port 8000.
+
+You can then access the application at `http://localhost:8000`.
+
+## Online Deployment (Render.com)
+
+Render is the recommended platform for this project as it supports both the FastAPI backend and the ML models.
+
+### Step-by-Step Instructions:
+
+1. **Push to GitHub**: Upload your project to a GitHub repository.
+2. **Create a New Web Service**:
+   - Go to [Render Dashboard](https://dashboard.render.com/) and click **New > Web Service**.
+   - Connect your GitHub repository.
+3. **Configure Settings**:
+   - **Environment**: `Python 3`
+   - **Build Command**: `./render-build.sh`
+   - **Start Command**: `cd backend && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`
+4. **Environment Variables**:
+   - Go to the **Environment** tab in Render.
+   - Add `NEWS_API_KEY`: `pub_d8ede7bbda494f5fa882230aa626cbc4` (or your personal key).
+   - Add `PYTHONPATH`: `./backend`
+
+### Why not Vercel?
+While Vercel is great for React, it has a 50MB limit for serverless functions, which is too small for Scikit-learn and the associated ML models used in this project. Render handles these dependencies perfectly.

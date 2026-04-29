@@ -7,7 +7,7 @@ import PCAScatterChart from '../components/PCAScatterChart';
 import TopTermsChips from '../components/TopTermsChips';
 import HistoryTable from '../components/HistoryTable';
 import { getDashboardStats, getHistory, fetchNewsAndAnalyze } from '../services/api';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { Globe, RefreshCcw } from 'lucide-react';
 
 import TopicDriftChart from '../components/TopicDriftChart';

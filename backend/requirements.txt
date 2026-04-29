@@ -1,10 +1,15 @@
 fastapi
 uvicorn
+gunicorn
 sqlalchemy
 scikit-learn
+joblib
 nltk
 pandas
 numpy
 pydantic
 pydantic-settings
 python-multipart
+httpx
+pypdf
+python-dateutil

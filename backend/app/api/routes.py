@@ -99,7 +99,11 @@ async def parse_uploaded_file(file: UploadFile) -> List[str]:
             df = pd.read_csv(file.file)
             text_col = next((col for col in df.columns if col.lower() in ['text', 'content', 'article']), None)
             if not text_col:
-                text_col = df.select_dtypes(include=['object']).columns[0]
+                object_cols = df.select_dtypes(include=['object']).columns
+                if len(object_cols) > 0:
+                    text_col = object_cols[0]
+                else:
+                    raise ValueError("No text-based column found in CSV. Please ensure your file has a 'text' or 'content' column.")
             return df[text_col].dropna().astype(str).tolist()
         elif file.filename.lower().endswith('.json'):
             content = await file.read()
@@ -147,10 +151,11 @@ async def compare_batches(
     cleaned_a = [clean_text(t) for t in texts_a]
     cleaned_b = [clean_text(t) for t in texts_b]
     
-    tfidf_a, _, terms_a = vectorization_service.transform(cleaned_a)
-    tfidf_b, _, terms_b = vectorization_service.transform(cleaned_b)
+    tfidf_a, _, top_a = vectorization_service.transform(cleaned_a)
+    tfidf_b, _, top_b = vectorization_service.transform(cleaned_b)
     
-    similarity, common, top_a, top_b = compare_two_matrices(tfidf_a, tfidf_b, terms_a, terms_b)
+    similarity = compare_two_matrices(tfidf_a, tfidf_b)
+    common = list(set(top_a) & set(top_b))
     
     return CompareResponse(
         similarity_score=similarity,
@@ -173,10 +178,11 @@ async def compare_texts(payload: dict):
     cleaned_a = [clean_text(t) for t in texts_a]
     cleaned_b = [clean_text(t) for t in texts_b]
     
-    tfidf_a, _, terms_a = vectorization_service.transform(cleaned_a)
-    tfidf_b, _, terms_b = vectorization_service.transform(cleaned_b)
+    tfidf_a, _, top_a = vectorization_service.transform(cleaned_a)
+    tfidf_b, _, top_b = vectorization_service.transform(cleaned_b)
     
-    similarity, common, top_a, top_b = compare_two_matrices(tfidf_a, tfidf_b, terms_a, terms_b)
+    similarity = compare_two_matrices(tfidf_a, tfidf_b)
+    common = list(set(top_a) & set(top_b))
     
     return CompareResponse(
         similarity_score=similarity,

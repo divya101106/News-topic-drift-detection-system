@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 
 interface TopicDriftDetail {
-  term: str;
+  term: string;
   baseline_score: number;
   batch_score: number;
   diff: number;

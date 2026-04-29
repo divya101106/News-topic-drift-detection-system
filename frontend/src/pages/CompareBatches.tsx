@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { UploadCloud, FileText, ArrowRightLeft, Loader2, Activity, Info, CheckCircle2, ListFilter } from 'lucide-react';
-import { compareBatches, extractArticles, analyzeTexts, compareTexts } from '../services/api';
+import { UploadCloud, FileText, ArrowRightLeft, Loader2, CheckCircle2, ListFilter } from 'lucide-react';
+import { extractArticles, compareTexts } from '../services/api';
 import SimilarityGauge from '../components/SimilarityGauge';
 import ArticleSelector from '../components/ArticleSelector';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,18 +34,29 @@ export default function CompareBatches() {
   };
 
   const handleCompare = async () => {
-    const finalA = selectedA || (fileA ? await extractArticles(fileA) : null);
-    const finalB = selectedB || (fileB ? await extractArticles(fileB) : null);
-    
-    if (!finalA || !finalB) return;
-
     try {
       setIsUploading(true);
       setError(null);
+
+      const getArticles = async (file: File) => {
+        const articles = await extractArticles(file);
+        return articles;
+      };
+
+      const finalA = selectedA || (fileA ? await getArticles(fileA) : null);
+      const finalB = selectedB || (fileB ? await getArticles(fileB) : null);
+      
+      if (!finalA || finalA.length === 0 || !finalB || finalB.length === 0) {
+        setError('One or both batches contain no articles. Please check your files.');
+        setIsUploading(false);
+        return;
+      }
+
       const data = await compareTexts(finalA, finalB);
       setResult(data);
     } catch (err: any) {
-      setError('Comparison failed.');
+      console.error(err);
+      setError(err.response?.data?.detail || 'Comparison failed. Please check your files and try again.');
     } finally {
       setIsUploading(false);
     }
