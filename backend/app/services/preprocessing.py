@@ -4,10 +4,12 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import os
 
-# Download NLTK data to a specific directory to ensure it's available
-nltk_data_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'nltk_data')
+# On cloud platforms like Render the repo directory may be read-only.
+# Use /tmp which is always writable, then fall back to a local path for dev.
+nltk_data_dir = os.environ.get("NLTK_DATA", "/tmp/nltk_data")
 os.makedirs(nltk_data_dir, exist_ok=True)
-nltk.data.path.append(nltk_data_dir)
+if nltk_data_dir not in nltk.data.path:
+    nltk.data.path.insert(0, nltk_data_dir)
 
 try:
     nltk.download('stopwords', download_dir=nltk_data_dir, quiet=True)

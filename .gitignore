@@ -5,9 +5,11 @@ __pycache__/
 venv/
 .env
 
-# ML Models & Data (regenerate with: python backend/models/generate_mock_models.py)
-backend/models/*.pkl
-backend/models/*.npy
+# ML Models - committed so Render has them at deploy time
+# To regenerate: python backend/models/generate_mock_models.py
+!backend/models/*.pkl
+!backend/models/*.npy
+!backend/models/*.joblib
 
 # Database
 *.db

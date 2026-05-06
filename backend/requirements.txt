@@ -1,15 +1,13 @@
 fastapi
-uvicorn
-gunicorn
+uvicorn[standard]
 sqlalchemy
 scikit-learn
-joblib
 nltk
 pandas
 numpy
 pydantic
 pydantic-settings
 python-multipart
+joblib
 httpx
 pypdf
-python-dateutil

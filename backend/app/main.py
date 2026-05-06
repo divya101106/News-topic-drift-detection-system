@@ -17,23 +17,17 @@ app = FastAPI(title=settings.PROJECT_NAME)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For dev purposes
+    allow_origins=[
+        "http://localhost:5173",
+        "https://news-topic-drift-detection-system.onrender.com",
+        "https://drift-sense-frontend.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-from fastapi.staticfiles import StaticFiles
-import os
-
 app.include_router(router, prefix="/api")
-
-# Serve Frontend Static Files
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
-if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
-else:
-    logger.warning(f"Frontend dist folder not found at {frontend_path}. Frontend will not be served.")
 
 @app.on_event("startup")
 async def startup_event():
